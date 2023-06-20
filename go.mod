@@ -6,6 +6,7 @@ require (
 	github.com/bitly/go-simplejson v0.5.0
 	github.com/gin-gonic/gin v1.9.0
 	github.com/google/uuid v1.3.0
+	github.com/mozillazg/go-pinyin v0.20.0
 	github.com/sirupsen/logrus v1.9.2
 	gorm.io/driver/mysql v1.5.1
 	gorm.io/gorm v1.25.1

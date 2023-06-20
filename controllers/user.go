@@ -86,7 +86,7 @@ func PostUser(c *gin.Context) {
 	}
 
 	//处理图片
-	err = os.Mkdir("./static/"+realName, 0777)
+	err = os.Mkdir("./static/"+username, 0777)
 	if err != nil {
 		log.Error(err)
 	}
@@ -95,9 +95,10 @@ func PostUser(c *gin.Context) {
 	picsNum := len(picsJson.MustArray())
 	for i := 0; i < picsNum; i++ {
 		picJson := picsJson.GetIndex(i)
-		filename := picJson.Get("filename").MustString()
+		tokenUUID, _ := uuid.NewRandom()
+		filename := tokenUUID.String()
 		dataString := picJson.Get("filedata").MustString()
-		err := os.WriteFile("./static/"+realName+"/"+filename, []byte(dataString), 0777)
+		err := os.WriteFile("./static/"+username+"/"+filename, []byte(dataString), 0777)
 		if err != nil {
 			set500(c, err)
 			return
