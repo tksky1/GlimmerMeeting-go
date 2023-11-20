@@ -36,7 +36,7 @@ func GetMeetingList(c *gin.Context) {
 
 // GetMeetingByBooker 查看个人会议记录
 func GetMeetingByBooker(c *gin.Context) {
-	token := c.Query("token")
+	token := c.PostForm("token")
 	if TokenMap[token] == "" {
 		set400(c, "权限不足！")
 		return
@@ -60,21 +60,28 @@ func GetMeetingByBooker(c *gin.Context) {
 
 // GetOccupiedTime 返回当天会议室被占用时段
 func GetOccupiedTime(c *gin.Context) {
-	token := c.Query("token")
+	token := c.PostForm("token")
+	roomIDString := c.PostForm("roomid")
+	date := c.PostForm("date")
 	if TokenMap[token] == "" {
 		set400(c, "权限不足！")
 		return
 	}
 
 	repo := repositories.NewMeetingRepository()
-	roomID, err := strconv.Atoi(c.Query("roomid"))
+	roomID, err := strconv.Atoi(roomIDString)
 	if err != nil {
 		set500(c, err)
 		return
 	}
-	meetingRecords, err := repo.GetByDayAndRoomID(c.Query("date"), roomID)
-	if err != nil {
+	meetingRecords, err := repo.GetByDayAndRoomID(date, roomID)
+	if err != nil && err != gorm.ErrRecordNotFound {
 		set500(c, err)
+		return
+	}
+
+	if err == gorm.ErrRecordNotFound {
+		c.JSON(200, nil)
 		return
 	}
 	var records models.MeetingRecordList = meetingRecords
@@ -107,7 +114,16 @@ func PutMeeting(c *gin.Context) {
 		return
 	}
 	bodyJson, _ := simplejson.NewJson(byteJson)
-	token := bodyJson.Get("token").MustString()
+	tokenJson, success := bodyJson.CheckGet("token")
+	if tokenJson == nil || !success {
+		set400(c, "token无法解析："+string(byteJson))
+		return
+	}
+	token, err := tokenJson.String()
+	if err != nil {
+		set400(c, "token无法解析："+string(byteJson))
+		return
+	}
 	if TokenMap[token] == "" {
 		set400(c, "权限不足！")
 		return
@@ -125,17 +141,51 @@ func PutMeeting(c *gin.Context) {
 	username := TokenMap[token]
 	user, err := repoUser.FindByUsername(username)
 	if err != nil {
-		set400(c, "权限不足！")
+		set500(c, err)
 		return
 	}
 	meeting.BookerID = int(user.ID)
 	repoRoom := repositories.NewRoomRepository()
 	room, err := repoRoom.GetById(uint(meeting.RoomID))
 	if err != nil {
-		set400(c, "权限不足！")
+		set500(c, err)
 		return
 	}
 	meeting.RoomLocation = room.Location
+
+	// 冲突检查
+	repo1 := repositories.NewMeetingRepository()
+	meetingRecords, err := repo1.GetByDayAndRoomID(meeting.Day, meeting.RoomID)
+	if err != nil && err != gorm.ErrRecordNotFound {
+		set500(c, err)
+		return
+	}
+	var records models.MeetingRecordList = meetingRecords
+	sort.Sort(records)
+
+	var timepieces []models.Timepiece
+	for i, record := range records {
+		if i > 0 && record.BeginHour == records[i-1].EndHour && record.BeginMinute == records[i-1].EndMinute {
+			timepieces[len(timepieces)-1].EndHour = record.EndHour
+			timepieces[len(timepieces)-1].EndMinute = record.EndMinute
+		} else {
+			timepieces = append(timepieces, models.Timepiece{
+				BeginHour:   record.BeginHour,
+				BeginMinute: record.BeginMinute,
+				EndHour:     record.EndHour,
+				EndMinute:   record.EndMinute,
+			})
+		}
+	}
+
+	for _, record := range timepieces {
+		if models.TimePieceConflict(meeting.Duration, record) {
+			c.JSON(401, gin.H{
+				"message": "时间段已有占用！",
+			})
+			return
+		}
+	}
 
 	// 将Meeting转换为MeetingRecord
 	meetingRecord := meeting.ToMeetingRecord()

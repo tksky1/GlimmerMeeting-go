@@ -10,9 +10,9 @@ import (
 var MeetingDB *gorm.DB
 
 func Init() {
-	username := "glimmermeeting"
-	password := "glimmernb"
-	hostname := "api.mcyou.cc"
+	username := "root"
+	password := "Mcyouyou1@"
+	hostname := "127.0.0.1"
 	port := 3306
 	database := "glimmermeeting"
 

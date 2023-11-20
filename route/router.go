@@ -26,8 +26,8 @@ func InitRouter() *gin.Engine {
 
 	bookGrp := r.Group("/book")
 	{
-		bookGrp.GET("/meeting", controllers.GetMeetingByBooker)
-		bookGrp.GET("/occupiedtime", controllers.GetOccupiedTime)
+		bookGrp.POST("/personalmeeting", controllers.GetMeetingByBooker)
+		bookGrp.POST("/occupiedtime", controllers.GetOccupiedTime)
 		bookGrp.POST("/meeting", controllers.PutMeeting)
 		bookGrp.DELETE("/meeting", controllers.DeleteMeeting)
 	}

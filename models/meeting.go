@@ -85,3 +85,15 @@ func (l MeetingRecordList) Less(i, j int) bool {
 func (l MeetingRecordList) Swap(i, j int) {
 	l[i], l[j] = l[j], l[i]
 }
+
+func TimePieceConflict(i, j Timepiece) bool {
+	start1 := i.BeginHour*60 + i.BeginMinute
+	end1 := i.EndHour*60 + i.EndMinute
+	start2 := j.BeginHour*60 + j.BeginMinute
+	end2 := j.EndHour*60 + j.EndMinute
+
+	if start1 < end2 && start2 < end1 {
+		return true
+	}
+	return false
+}
